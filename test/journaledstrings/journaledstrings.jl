@@ -51,20 +51,20 @@ end                          # ... (es. una sequenza "GCAT")
 # Creo la struttura JournaledString
 struct JournaledString
     reference::LongDNA{4}                  # Si può usare anche LongSequence
-    journals::Vector{Vector{JournalEntry}} # Vector che definisce le modifiche..
-end                                        # ...rispetto alla ref. (i journals)
+    deltaMap::Vector{Vector{JournalEntry}} # Vector che definisce le modifiche..
+end                                        # ...rispetto alla ref. (deltaMap)
 
 # Funzione per aggiungere una Delta
-function add_delta!(journals, indices::Vector{Int}, 
+function add_delta!(deltaMap, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
-        push!(journals[idx], JournalEntry(delta_type, position, data))
+        push!(deltaMap[idx], JournalEntry(delta_type, position, data))
     end
 end
 
-function apply_journal(reference::LongDNA{4}, journal::Vector{JournalEntry})
+function apply_delta(reference::LongDNA{4}, delta::Vector{JournalEntry})
     seq = copy(reference)
-    for entry in journal
+    for entry in delta
         # Check sul tipo di modifica
         if entry.delta_type == DeltaTypeDel
             seq = delete_at!(seq, entry.position:(entry.position + 
@@ -84,8 +84,8 @@ end
 
 # Funzione per stampare le sequenze
 function print_sequences(jst::JournaledString)
-    for i in 1:length(jst.journals)
-        modified_seq = apply_journal(jst.reference, jst.journals[i])
+    for i in 1:length(jst.deltaMap)
+        modified_seq = apply_delta(jst.reference, jst.deltaMap[i])
         println("Sequence $i: ", modified_seq)
     end
 end
@@ -95,29 +95,29 @@ end
 # Define a reference sequence
 reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
 
-# Initialize journals for each of the 10 sequences
-journals = [Vector{JournalEntry}() for _ in 1:10]
+# Initialize deltaMap for each of the 10 sequences
+deltaMap = [Vector{JournalEntry}() for _ in 1:10]
 
 # Create a JournaledString
-jst = JournaledString(reference_seq, journals)
+jst = JournaledString(reference_seq, deltaMap)
 
 # Example: Apply insertions, deletions, SNPs, etc.
 println("Prova di: INS e SNP")
-add_delta!(jst.journals, [1, 2], DeltaTypeIns, 8, "CGTA")
-add_delta!(jst.journals, [4, 9], DeltaTypeSnp, 10, 'C')
-add_delta!(jst.journals, [8], DeltaTypeIns, 24, "NNNNN")
+add_delta!(jst.deltaMap, [1, 2], DeltaTypeIns, 8, "CGTA")
+add_delta!(jst.deltaMap, [4, 9], DeltaTypeSnp, 10, 'C')
+add_delta!(jst.deltaMap, [8], DeltaTypeIns, 24, "NNNNN")
 print_sequences(jst)
 
 println("\n")
 println("Prova di: DELETE (stringa 3 perde 10 caratteri)")
-add_delta!(jst.journals, [3], DeltaTypeDel, 1, 10)
+add_delta!(jst.deltaMap, [3], DeltaTypeDel, 1, 10)
 print_sequences(jst)
 
 println("\n")
 println("Prova di: structure_variation")
-add_delta!(jst.journals, [5], DeltaTypeSV, 30, dna"CGTACGTACGTACGTA")
-add_delta!(jst.journals, [10], DeltaTypeSV, 18, dna"CGTACGTACGTACGTA")
-add_delta!(jst.journals, [7], DeltaTypeSV, 24, dna"NNNNN")
+add_delta!(jst.deltaMap, [5], DeltaTypeSV, 30, dna"CGTACGTACGTACGTA")
+add_delta!(jst.deltaMap, [10], DeltaTypeSV, 18, dna"CGTACGTACGTACGTA")
+add_delta!(jst.deltaMap, [7], DeltaTypeSV, 24, dna"NNNNN")
 print_sequences(jst)
 
 =#
