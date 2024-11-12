@@ -41,12 +41,16 @@ end
 # Definiamo i DeltaType
 @enum DeltaType DeltaTypeDel DeltaTypeIns DeltaTypeSnp DeltaTypeSV
 
+# Definisco il current_time
+current_time = Ref(0)
+
 # Journal Entry
 struct JournalEntry
     delta_type::DeltaType    # Tipo della modifica
     position::Int            # Posizione della modifica
     data::Any                # Dati che servono alla modifica ...
-end                          # ... (es. una sequenza "GCAT")
+    time::Int                # ... (es. una sequenza "GCAT")
+end                          
 
 # Creo la struttura JournaledString
 struct JournaledString
@@ -58,7 +62,9 @@ end                                        # ...rispetto alla ref. (deltaMap)
 function add_delta!(deltaMap, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
-        push!(deltaMap[idx], JournalEntry(delta_type, position, data))
+        push!(deltaMap[idx], JournalEntry(delta_type, position, data,
+             current_time[]))
+        current_time[] += 1
     end
 end
 
@@ -90,34 +96,10 @@ function print_sequences(jst::JournaledString)
     end
 end
 
-
-#= Pseudocodice di prova
-# Define a reference sequence
-reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
-
-# Initialize deltaMap for each of the 10 sequences
-deltaMap = [Vector{JournalEntry}() for _ in 1:10]
-
-# Create a JournaledString
-jst = JournaledString(reference_seq, deltaMap)
-
-# Example: Apply insertions, deletions, SNPs, etc.
-println("Prova di: INS e SNP")
-add_delta!(jst.deltaMap, [1, 2], DeltaTypeIns, 8, "CGTA")
-add_delta!(jst.deltaMap, [4, 9], DeltaTypeSnp, 10, 'C')
-add_delta!(jst.deltaMap, [8], DeltaTypeIns, 24, "NNNNN")
-print_sequences(jst)
-
-println("\n")
-println("Prova di: DELETE (stringa 3 perde 10 caratteri)")
-add_delta!(jst.deltaMap, [3], DeltaTypeDel, 1, 10)
-print_sequences(jst)
-
-println("\n")
-println("Prova di: structure_variation")
-add_delta!(jst.deltaMap, [5], DeltaTypeSV, 30, dna"CGTACGTACGTACGTA")
-add_delta!(jst.deltaMap, [10], DeltaTypeSV, 18, dna"CGTACGTACGTACGTA")
-add_delta!(jst.deltaMap, [7], DeltaTypeSV, 24, dna"NNNNN")
-print_sequences(jst)
-
-=#
+function print_deltas(jst::JournaledString)
+    for j in 1:length(jst.deltaMap)
+        for i in jst.deltaMap[j]
+            println("JournalEntry: $i su stringa indice $j")
+        end
+    end
+end
