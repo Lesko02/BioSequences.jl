@@ -2,7 +2,7 @@ include("journaledstrings.jl")
 # Define a reference sequence
 reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
 
-# Initialize deltaMap for each of the 10 sequences
+# Initialize the deltaMap for how many sequences you want
 deltaMap = [Vector{JournalEntry}() for _ in 1:10]
 
 # Create a JournaledString
@@ -30,5 +30,6 @@ add_delta!(jst.deltaMap, [7], DeltaTypeSV, 24, dna"NNNNN")
 add_delta!(jst.deltaMap, [7], DeltaTypeSV, 24, dna"NNNNN")
 add_delta!(jst.deltaMap, [7], DeltaTypeSV, 24, dna"NNNNN")
 
+# Print the sequences and the deltas
 print_sequences(jst)
 print_deltas(jst)
