@@ -1,6 +1,6 @@
 using BioSequences
 
-# Custom insert per sequenze 
+# Custom insert for sequences
 function insert!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
     for symbol in subseq
         Base.insert!(seq, pos, symbol)  # Inserimento dei singoli simboli
@@ -8,7 +8,7 @@ function insert!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
     return seq
 end
 
-# Custom delete_at per intervalli 
+# Custom delete_at for ranges
 function delete_at!(seq::LongDNA, pos_range::UnitRange{Int})
     for i in reverse(pos_range)
         Base.deleteat!(seq, i)
@@ -16,17 +16,17 @@ function delete_at!(seq::LongDNA, pos_range::UnitRange{Int})
     return seq
 end
 
-# Implemento structure_variation per modifiche maggiori
+# Naive implementation of structure_variation //TO FIX//
 function structure_variation!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
-    # Test per vedere se è una semplice append
+    # Check if it's a base case of an append!
     if pos == lastindex(seq)
         append!(seq, subseq)
         return seq
-    # Test per vedere se è una normale insert!
+    # Check if it's a base case of insert!
     elseif pos < lastindex(seq)
         insert!(seq, pos, subseq)
         return seq
-    # Test per vedere se è una modifica lontana dalla fine della reference
+    # Check of an out of bounds insert --> SV
     elseif pos > lastindex(seq)
         i = lastindex(seq)
         range = lastindex(seq):pos-1
@@ -38,27 +38,27 @@ function structure_variation!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
     end
 end
 
-# Definiamo i DeltaType
+# Definition of DeltaTypes
 @enum DeltaType DeltaTypeDel DeltaTypeIns DeltaTypeSnp DeltaTypeSV
 
-# Definisco il current_time
+# Definition of current_time
 current_time = Ref(0)
 
 # Journal Entry
 struct JournalEntry
-    delta_type::DeltaType    # Tipo della modifica
-    position::Int            # Posizione della modifica
-    data::Any                # Dati che servono alla modifica ...
-    time::Int                # ... (es. una sequenza "GCAT")
+    delta_type::DeltaType    # Type of delta
+    position::Int            # Index of delta
+    data::Any                # Additional Data
+    time::Int                # Timestamp
 end                          
 
-# Creo la struttura JournaledString
+# Definition of JournaledString Structure
 struct JournaledString
-    reference::LongDNA{4}                  # Si può usare anche LongSequence
-    deltaMap::Vector{Vector{JournalEntry}} # Vector che definisce le modifiche..
-end                                        # ...rispetto alla ref. (deltaMap)
+    reference::LongDNA{4}                  # LongSequence also possible
+    deltaMap::Vector{Vector{JournalEntry}} # Vector of deltas of the n...
+end                                        # ...derivated sequences
 
-# Funzione per aggiungere una Delta
+# Function to add a new Delta
 function add_delta!(deltaMap, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
@@ -71,15 +71,16 @@ end
 function apply_delta(reference::LongDNA{4}, delta::Vector{JournalEntry})
     seq = copy(reference)
     for entry in delta
-        # Check sul tipo di modifica
+        # Check on the DeltaType
         if entry.delta_type == DeltaTypeDel
             seq = delete_at!(seq, entry.position:(entry.position + 
-                   entry.data - 1))  # Il dato dell'entry è la fine del range
+                   entry.data - 1))  # Data is the bound of the range
         elseif entry.delta_type == DeltaTypeIns
             seq = insert!(seq, entry.position, LongDNA{4}(entry.data))
+             # Single nucleotide permutation
         elseif entry.delta_type == DeltaTypeSnp
             seq[entry.position] = convert(DNA, entry.data)  
-            # Cambio di un singolo nucleotide
+            # Larger Structure change
         elseif entry.delta_type == DeltaTypeSV
             seq = structure_variation!(seq, entry.position, entry.data)
         end
@@ -88,7 +89,7 @@ function apply_delta(reference::LongDNA{4}, delta::Vector{JournalEntry})
 end
 
 
-# Funzione per stampare le sequenze
+# Function to print the n sequences
 function print_sequences(jst::JournaledString)
     for i in 1:length(jst.deltaMap)
         modified_seq = apply_delta(jst.reference, jst.deltaMap[i])
@@ -96,6 +97,7 @@ function print_sequences(jst::JournaledString)
     end
 end
 
+# Function to print all of the deltas
 function print_deltas(jst::JournaledString)
     for j in 1:length(jst.deltaMap)
         for i in jst.deltaMap[j]
