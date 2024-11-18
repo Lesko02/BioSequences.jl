@@ -1,4 +1,5 @@
 using BioSequences
+include("tree_map.jl")
 
 # Custom insert for sequences
 function insert!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
