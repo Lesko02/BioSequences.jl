@@ -3,7 +3,8 @@ include("journaledstrings.jl")
 reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
 
 # Initialize the deltaMap for how many sequences you want
-deltaMap = [Vector{JournalEntry}() for _ in 1:10]
+deltaMap = [SortedDict{Int, JournalEntry}() for _ in 1:10]  # Ten subseqs
+
 
 # Create a JournaledString
 jst = JournaledString(reference_seq, deltaMap)
