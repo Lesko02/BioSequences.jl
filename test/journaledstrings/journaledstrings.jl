@@ -1,5 +1,5 @@
 using BioSequences
-include("tree_map.jl")
+using DataStructures
 
 # Custom insert for sequences
 function insert!(seq::LongDNA{4}, pos::Int, subseq::LongDNA)
@@ -55,23 +55,29 @@ end
 
 # Definition of JournaledString Structure
 struct JournaledString
-    reference::LongDNA{4}                  # LongSequence also possible
-    deltaMap::Vector{Vector{JournalEntry}} # Vector of deltas of the n...
-end                                        # ...derivated sequences
+    reference::LongDNA{4}                            
+    deltaMap::Vector{SortedDict{Int, JournalEntry}}  # Sorted by time
+end                                        
 
 # Function to add a new Delta
 function add_delta!(deltaMap, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
-        push!(deltaMap[idx], JournalEntry(delta_type, position, data,
-             current_time[]))
-        current_time[] += 1
+       # Create the new JournalEntry
+       new_entry = JournalEntry(delta_type, position, data, current_time[])
+        
+       # Insert the entry into the SortedDict with `time` as the key
+       deltaMap[idx][current_time[]] = new_entry
+
+       # Increment the current time
+       current_time[] += 1
     end
 end
 
-function apply_delta(reference::LongDNA{4}, delta::Vector{JournalEntry})
+function apply_delta(reference::LongDNA{4}, 
+                    delta::SortedDict{Int, JournalEntry})
     seq = copy(reference)
-    for entry in delta
+    for (_, entry) in delta  # Access entries in sorted order of `time`
         # Check on the DeltaType
         if entry.delta_type == DeltaTypeDel
             seq = delete_at!(seq, entry.position:(entry.position + 
@@ -101,8 +107,9 @@ end
 # Function to print all of the deltas
 function print_deltas(jst::JournaledString)
     for j in 1:length(jst.deltaMap)
-        for i in jst.deltaMap[j]
-            println("JournalEntry: $i su stringa indice $j")
+        println("Stringa indice $j:")
+        for (time, entry) in jst.deltaMap[j]
+            println("  [time=$time] JournalEntry: $entry")
         end
     end
 end
