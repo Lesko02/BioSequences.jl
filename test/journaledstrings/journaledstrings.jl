@@ -42,8 +42,6 @@ end
 # Definition of DeltaTypes
 @enum DeltaType DeltaTypeDel DeltaTypeIns DeltaTypeSnp DeltaTypeSV
 
-# Definition of current_time
-current_time = Ref(0)
 
 # Journal Entry
 struct JournalEntry
@@ -53,24 +51,29 @@ struct JournalEntry
     time::Int                # Timestamp
 end                          
 
-# Definition of JournaledString Structure
-struct JournaledString
-    reference::LongDNA{4}                            
-    deltaMap::Vector{SortedDict{Int, JournalEntry}}  # Sorted by time
-end                                        
+mutable struct JournaledString
+    reference::LongDNA{4}
+    deltaMap::Vector{SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}}
+    current_time::Int
+end
+
+function JournaledString(reference::LongDNA{4},
+    deltaMap::Vector{SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}})
+    JournaledString(reference, deltaMap, 0)  # Default value for current_time
+end
 
 # Function to add a new Delta
-function add_delta!(deltaMap, indices::Vector{Int}, 
+function add_delta!(jss::JournaledString, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
        # Create the new JournalEntry
-       new_entry = JournalEntry(delta_type, position, data, current_time[])
+       new_entry = JournalEntry(delta_type, position, data, jss.current_time)
         
        # Insert the entry into the SortedDict with `time` as the key
-       deltaMap[idx][current_time[]] = new_entry
+       jss.deltaMap[idx][jss.current_time] = new_entry
 
        # Increment the current time
-       current_time[] += 1
+       jst.current_time += 1
     end
 end
 
