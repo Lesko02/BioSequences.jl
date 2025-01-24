@@ -37,4 +37,33 @@ add_delta!(jst, [7], DeltaTypeSV, 24, dna"NNNNN")
 
 # Print the sequences and the deltas
 print_sequences(jst)
+
+println("\n")
+println("Prova di: CNV")
+add_delta!(jst, [1], DeltaTypeCNV, 1, (LongDNA{4}("AAAA"), 5))
+
+print_sequences(jst)
 print_deltas(jst)
+
+# Create two identical JournaledString objects
+js1 = JournaledString(LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG"), [SortedDict{Int, JournalEntry}() for _ in 1:10], 0)
+js2 = JournaledString(LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG"), [SortedDict{Int, JournalEntry}() for _ in 1:10], 0)
+add_delta!(js1, [1, 2], DeltaTypeIns, 8, "CGTA")
+add_delta!(js2, [1, 2], DeltaTypeIns, 8, "CGTA")
+# Compare two JournaledString objects
+println(is_equal(js1, js2))
+
+# Hash the objects
+println("hash of objects")
+println(hash(js1))  # This will print the hash value of js1
+println(hash(js2))  # This will print the hash value of js2
+println("hash of components")
+println("deltamaps")
+println(hash(js1.deltaMap))
+println(hash(js2.deltaMap))
+println("sequence")
+println(hash(js1.reference))
+println(hash(js2.reference))
+println("time")
+println(hash(js1.current_time))
+println(hash(js2.current_time))
