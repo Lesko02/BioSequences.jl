@@ -53,17 +53,13 @@ add_delta!(js2, [1, 2], DeltaTypeIns, 8, "CGTA")
 # Compare two JournaledString objects
 println(is_equal(js1, js2))
 
-# Hash the objects
-println("hash of objects")
-println(hash(js1))  # This will print the hash value of js1
-println(hash(js2))  # This will print the hash value of js2
-println("hash of components")
-println("deltamaps")
-println(hash(js1.deltaMap))
-println(hash(js2.deltaMap))
-println("sequence")
-println(hash(js1.reference))
-println(hash(js2.reference))
-println("time")
-println(hash(js1.current_time))
-println(hash(js2.current_time))
+tree = JSTree(LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG"))
+
+add_node(tree, "root", deltaMap[2], "child1")
+add_node(tree, "child1", deltaMap[1], "child2")
+
+
+print_tree(tree, "root", 0)
+
+# Reconstruct and print sequences
+#print_sequences(tree)
