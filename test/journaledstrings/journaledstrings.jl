@@ -69,15 +69,17 @@ mutable struct JournaledString
     current_time::Int
 end
 
+const DeltaMap = SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}
+
 # Constructor for JournaledString
 function JournaledString(reference::LongDNA{4},
-    deltaMap::Vector{SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}})
+    deltaMap::Vector{DeltaMap})
     JournaledString(reference, deltaMap, 0)
 end
 
 struct JSTNode
     parent::Union{Nothing, JSTNode}
-    deltaMap::Union{Nothing, SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}}
+    deltaMap::Union{Nothing, DeltaMap}
     name::String
 end
 
@@ -95,8 +97,7 @@ end
 
 
 function add_node(tree::JSTree, parent_name::String, 
-    deltas::SortedDict{Int, JournalEntry, Base.Order.ForwardOrdering}, 
-    node_name::String)
+    deltas::DeltaMap, node_name::String)
 
     if !haskey(tree.children, parent_name)
         error("Parent node '$parent_name' does not exist.")
@@ -176,7 +177,7 @@ end
 function remove_delta!(js::JournaledString, time::Int)
     for idx in deltaMap
         for entry in js.deltaMap[idx]
-            if(entry[time] == time)
+            if entry[time] == time
                 delete!(js.deltaMap[idx], time)
             else
             error("No mutation found at time: $time" )
@@ -187,7 +188,7 @@ function remove_delta!(js::JournaledString, time::Int)
 end
 
 function apply_delta(reference::LongDNA{4}, 
-                    delta::SortedDict{Int, JournalEntry})
+                    delta::DeltaMap)
     seq = copy(reference)
     for (_, entry) in delta  # Access entries in sorted order of `time`
         # Check on the DeltaType
@@ -260,7 +261,7 @@ end
 function get_sequences_at_time(jst::JournaledString, time::Int)
     sequences_at_time = Vector{LongDNA{4}}(undef, length(jst.deltaMap))
     for i in 1:length(jst.deltaMap)
-        filtered_delta = SortedDict{Int, JournalEntry}()
+        filtered_delta = DeltaMap()
         for (entry_time, entry) in jst.deltaMap[i]
             if entry_time > time
                 break
