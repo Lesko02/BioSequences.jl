@@ -187,8 +187,7 @@ function remove_delta!(js::JournaledString, time::Int)
     
 end
 
-function apply_delta(reference::LongDNA{4}, 
-                    delta::DeltaMap)
+function apply_delta(reference::LongDNA{4}, delta::DeltaMap)
     seq = copy(reference)
     for (_, entry) in delta  # Access entries in sorted order of `time`
         # Check on the DeltaType
@@ -290,4 +289,24 @@ function is_equal(jst1::JournaledString, jst2::JournaledString)::Bool
         return false
     end
 return hash(jst1.deltaMap)==hash(jst2.deltaMap)
+end
+
+function naive_search(jss::JournaledString, needle::LongDNA )
+
+    query = ExactSearchQuery(needle)
+
+    for i in 1:length(jss.deltaMap)
+
+        seq = apply_delta(jss.reference, jss.deltaMap[i])
+        vector = BioSequences.findall(query, seq)
+
+        if isempty(vector)
+            println("No match at Deltamap N° $i")
+        else
+            println("Match at Deltamap N° $i")
+            print(" Ranges: ", vector)
+        end
+
+    end
+
 end
