@@ -102,36 +102,31 @@ function add_node(tree::JSTree, parent_name::String,
     if !haskey(tree.children, parent_name)
         error("Parent node '$parent_name' does not exist.")
     else
-        # If parent is not root, ensure the parent exists in the tree
         parent_node = tree.children[parent_name]
         new_node = JSTNode(parent_node, deltas, node_name)
     end
 
-# Add the new node to the tree
 tree.children[node_name] = new_node
 end
 
 
 function flatten(tree::JSTree, node_name::String)
-    # Base case: Root sequence
+    # Base case
     if node_name == "root"
         return tree.root
     end
 
-    # Recursive case: Flatten parent and apply deltas
+    # Recursive case
     node = tree.children[node_name]
     parent_sequence = flatten(tree, node.parent.name)
     return apply_delta(parent_sequence, node.deltaMap)
 end
 
 function print_tree(tree::JSTree, node_name::String = "root", indent::Int = 0)
-    println(" "^(indent * 2) * "|- " * node_name)  # Correct string concatenation
-    
-    # Recursively print children
+    println(" "^(indent * 2) * "|- " * node_name) 
     for (child_name, child_node) in tree.children
-        # Only print children whose parent matches the current node's name
         if child_node.parent !== nothing && child_node.parent.name == node_name
-            print_tree(tree, child_name, indent + 1)  # Recursively print children
+            print_tree(tree, child_name, indent + 1) 
         end
     end
 end
@@ -148,28 +143,25 @@ function print_sequences(tree::JSTree)
     end
 end
 
-# Function to add a new Delta
 function add_delta!(js::JournaledString, indices::Vector{Int}, 
                     delta_type::DeltaType, position::Int, data::Any)
     for idx in indices
-       # Create the new JournalEntry
+
        new_entry = JournalEntry(delta_type, position, data, js.current_time)
         
-       # Insert the entry into the SortedDict with `time` as the key
        js.deltaMap[idx][js.current_time] = new_entry
 
-       # Increment the current time
        js.current_time += 1
     end
 end
 
 function add_delta!(js::JournaledString,
      indices::Vector{Int}, entry::JournalEntry)
+
         for idx in indices
-        # Insert the entry into the SortedDict with `time` as the key
+
         js.deltaMap[idx][js.current_time] = entry
 
-        # Increment the current time
         js.current_time += 1
         end
 end
@@ -189,8 +181,8 @@ end
 
 function apply_delta(reference::LongDNA{4}, delta::DeltaMap)
     seq = copy(reference)
-    for (_, entry) in delta  # Access entries in sorted order of `time`
-        # Check on the DeltaType
+    for (_, entry) in delta
+        # Check DeltaType
         if entry.delta_type == DeltaTypeDel
             seq = delete_at!(seq, entry.position:(entry.position + 
                    entry.data - 1))  # Data is the bound of the range
@@ -209,29 +201,28 @@ function apply_delta(reference::LongDNA{4}, delta::DeltaMap)
     return seq
 end
 
-# Function to print the n sequences
-function print_sequences(jst::JournaledString)
-    for i in 1:length(jst.deltaMap)
-        modified_seq = apply_delta(jst.reference, jst.deltaMap[i])
+function print_sequences(jss::JournaledString)
+    for i in 1:length(jss.deltaMap)
+        modified_seq = apply_delta(jss.reference, jss.deltaMap[i])
         println("Sequence $i: ", modified_seq)
     end
 end
 
 # Function to build the n sequences into a sigle string
-function build_sequences(jst::JournaledString)
+function build_sequences(jss::JournaledString)
     builded = ""
-    for i in 1:length(jst.deltaMap)
-        modified_seq = apply_delta(jst.reference, jst.deltaMap[i])
+    for i in 1:length(jss.deltaMap)
+        modified_seq = apply_delta(jss.reference, jss.deltaMap[i])
         builded *= "Sequence $i: " * string(modified_seq) * "\n"
     end
     return builded
 end
 
 # Function to print all of the deltas
-function print_deltas(jst::JournaledString)
-    for j in 1:length(jst.deltaMap)
+function print_deltas(jss::JournaledString)
+    for j in 1:length(jss.deltaMap)
         println("Stringa indice $j:")
-        for (time, entry) in jst.deltaMap[j]
+        for (time, entry) in jss.deltaMap[j]
             println("  [time=$time] JournalEntry: $entry")
         end
     end
@@ -239,17 +230,17 @@ end
 
 #API definitions
 
-function get_mutation_history(js::JournaledString)
+function get_mutation_history(jss::JournaledString)
     mutation_history = ""
-    for (time, entry) in jst.delta_map
+    for (time, entry) in jss.delta_map
         mutation_history *= "Time $time: $entry\n"
     end
     return mutation_history
 end
 
-function get_mutation_interval(js::JournaledString, time1::Int, time2::Int)
+function get_mutation_interval(jss::JournaledString, time1::Int, time2::Int)
     mutation_interval = ""
-    for (time, entry) in js.delta_map
+    for (time, entry) in jss.delta_map
         if time1 <= time <= time2
             mutation_interval *= "Time $time: $entry\n"
         end
@@ -257,28 +248,28 @@ function get_mutation_interval(js::JournaledString, time1::Int, time2::Int)
     return mutation_interval
 end
 
-function get_sequences_at_time(jst::JournaledString, time::Int)
-    sequences_at_time = Vector{LongDNA{4}}(undef, length(jst.deltaMap))
-    for i in 1:length(jst.deltaMap)
+function get_sequences_at_time(jss::JournaledString, time::Int)
+    sequences_at_time = Vector{LongDNA{4}}(undef, length(jss.deltaMap))
+    for i in 1:length(jss.deltaMap)
         filtered_delta = DeltaMap()
-        for (entry_time, entry) in jst.deltaMap[i]
+        for (entry_time, entry) in jss.deltaMap[i]
             if entry_time > time
                 break
             end
             filtered_delta[entry_time] = entry
         end
-        sequences_at_time[i] = apply_delta(jst.reference, filtered_delta)
+        sequences_at_time[i] = apply_delta(jss.reference, filtered_delta)
     end
     return sequences_at_time
 end
 
-function simulate_mutation!(jst::JournaledString, index::Int,
+function simulate_mutation!(jss::JournaledString, index::Int,
                              entry::JournalEntry)
-   add_delta!(jst.deltaMap, index, entry)
+   add_delta!(jss.deltaMap, index, entry)
 end
 
-function remove_mutation!(jst::JournaledString, time::Int)
-    remove_delta!(jst.deltaMap, time)
+function remove_mutation!(jss::JournaledString, time::Int)
+    remove_delta!(jss.deltaMap, time)
 end
 
 function is_equal(jst1::JournaledString, jst2::JournaledString)::Bool
@@ -291,12 +282,12 @@ function is_equal(jst1::JournaledString, jst2::JournaledString)::Bool
 return hash(jst1.deltaMap)==hash(jst2.deltaMap)
 end
 
-function naive_search(jss::JournaledString, needle::LongDNA )
+function slow_search(jss::JournaledString, needle::LongDNA )
 
     query = ExactSearchQuery(needle)
-
+    vector = UnitRange{Int}[]
     for i in 1:length(jss.deltaMap)
-
+        empty!(vector)
         seq = apply_delta(jss.reference, jss.deltaMap[i])
         vector = BioSequences.findall(query, seq)
 
@@ -310,3 +301,87 @@ function naive_search(jss::JournaledString, needle::LongDNA )
     end
 
 end
+
+function apply_delta(reference::LongDNA{4}, entry::JournalEntry)
+    seq = copy(reference)
+        # Check on the DeltaType
+        if entry.delta_type == DeltaTypeDel
+            seq = delete_at!(seq, entry.position:(entry.position + 
+            entry.data - 1))  # Data is the bound of the range
+        elseif entry.delta_type == DeltaTypeIns
+            seq = insert!(seq, entry.position, LongDNA{4}(entry.data))
+        # Single nucleotide permutation
+        elseif entry.delta_type == DeltaTypeSnp
+            seq[entry.position] = convert(DNA, entry.data)  
+            # Larger Structure change
+        elseif entry.delta_type == DeltaTypeSV
+            seq = structure_variation!(seq, entry.position, entry.data)
+        elseif entry.delta_type == DeltaTypeCNV
+            seq = copy_number_variation!(seq, entry.position, entry.data)
+        end
+    return seq
+end
+
+function slow_search(jst::JSTree, needle::LongDNA{4})
+    query = ExactSearchQuery(needle)
+    vector = UnitRange{Int}[]
+    for (name, child) in jst.children
+
+        empty!(vector)
+        if (!isnothing(child.deltaMap))
+        seq = apply_delta(flatten(jst, name), child.deltaMap)
+        vector = BioSequences.findall(query, seq)
+        end
+        
+        if isempty(vector)
+            println("No match at child: $name")
+        else
+            println("Match at child: $name")
+            println("Ranges: ", vector)
+        end
+    end
+end
+
+function approximate_search(jss::JournaledString, needle::LongDNA{4})
+    query = ApproximateSearchQuery(needle)
+    tolerance = ceil(Int64, (length(needle) / 100) * 5)  
+    indices = UnitRange{Int64}[]
+    vector = UnitRange{Int64}
+    y = 0
+    result = findfirst(query, tolerance, jss.reference) == nothing
+    while !result
+        indices = push!(findnext(query, tolerance, jss.reference, y))
+        increment = last(indices[end])
+        y = y + increment
+    end
+
+    for range in indices
+        for i in length(jss.deltaMap)
+            for entry in jss.deltaMap[i]
+                empty!(vector)
+                if entry.position in range
+                    seq = apply_delta(jss.reference, entry)
+                    #TODO MODIFICA LA FINDALL
+                    vector = push!(findall(query, tolerance, seq))
+                    pop!(range, indices)
+                    if isempty(vector)
+                        println("No match at Deltamap N° $i")
+                    else
+                        println("Match at Deltamap N° $i")
+                        print("Ranges: ", vector)
+                    end
+                end
+            end 
+            println("Match at Deltamap N° $i")
+            println("Ranges: ", indices)
+        end
+    end
+end
+#= function approximate_search(jst::JSTree, needle::LongDNA{4})
+    query = ApproximateSearchQuery(needle)
+    vector = UnitRange{Int}[]
+    vector = findall(query, seq)
+    for (name, node) in jst.children
+
+    end
+end =#
