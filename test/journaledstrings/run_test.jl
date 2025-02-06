@@ -2,7 +2,6 @@ include("journaledstrings.jl")
 # Define a reference sequence
 reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
 
-# Initialize the deltaMap for how many sequences you want
 deltaMap = [SortedDict{Int, JournalEntry}() for _ in 1:10]  # Ten subseqs
 
 # Create a JournaledString
@@ -58,8 +57,8 @@ add_node(tree, "child1", deltaMap[3], "child3")
 add_node(tree, "child1", deltaMap[4], "child4")
 add_node(tree, "child4", deltaMap[5], "child5")
 
-add_delta!(js1, [10], DeltaTypeCNV, 6, (LongDNA{4}("CC"), 3))
+add_delta!(js1, [10], DeltaTypeSnp, 21, 'C')
 print_sequences(js1)
 pattern = LongDNA{4}("CCC")
-slow_search(js1,pattern)
-approximate_search(js1, pattern)
+@time slow_search(js1,pattern)
+@time approximate_search(js1,pattern)
