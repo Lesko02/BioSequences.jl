@@ -295,7 +295,7 @@ function slow_search(jss::JournaledString, needle::LongDNA )
             println("No match at Deltamap N° $i")
         else
             println("Match at Deltamap N° $i")
-            print(" Ranges: ", vector)
+            println("Ranges: ", vector)
         end
 
     end
@@ -342,41 +342,51 @@ function slow_search(jst::JSTree, needle::LongDNA{4})
     end
 end
 
+function approximate_findall(query, tolerance::Int64, seq::LongDNA{4})
+    results = UnitRange{Int64}[]
+    pos = findfirst(query, tolerance, seq)
+    while pos !== nothing
+        push!(results, pos)
+        pos = findnext(query, tolerance, seq, last(pos)+1)
+    end
+    return results
+end
+
 function approximate_search(jss::JournaledString, needle::LongDNA{4})
     query = ApproximateSearchQuery(needle)
     tolerance = ceil(Int64, (length(needle) / 100) * 5)  
     indices = UnitRange{Int64}[]
-    vector = UnitRange{Int64}
-    y = 0
-    result = findfirst(query, tolerance, jss.reference) == nothing
-    while !result
-        indices = push!(findnext(query, tolerance, jss.reference, y))
-        increment = last(indices[end])
-        y = y + increment
-    end
+    vector = UnitRange{Int64}[]
+    indices = approximate_findall(query, tolerance, jss.reference)
+    to_remove = UnitRange{Int64}[]
 
     for range in indices
         for i in length(jss.deltaMap)
-            for entry in jss.deltaMap[i]
-                empty!(vector)
+            for ( _, entry) in jss.deltaMap[i]
+
                 if entry.position in range
+                    empty!(vector)
                     seq = apply_delta(jss.reference, entry)
-                    #TODO MODIFICA LA FINDALL
-                    vector = push!(findall(query, tolerance, seq))
-                    pop!(range, indices)
+                    vector = push!(approximate_findall(query, tolerance, seq))
+                    push!(to_remove, range)
                     if isempty(vector)
                         println("No match at Deltamap N° $i")
                     else
                         println("Match at Deltamap N° $i")
-                        print("Ranges: ", vector)
+                        println("Ranges: ", vector)
                     end
                 end
             end 
-            println("Match at Deltamap N° $i")
-            println("Ranges: ", indices)
+            filter!(x -> x ∉ to_remove, indices)
+            if !isempty(indices)
+                println("Match at Deltamap N° $i")
+                println("Ranges: ", indices) 
+            end
+        
         end
     end
 end
+
 #= function approximate_search(jst::JSTree, needle::LongDNA{4})
     query = ApproximateSearchQuery(needle)
     vector = UnitRange{Int}[]
