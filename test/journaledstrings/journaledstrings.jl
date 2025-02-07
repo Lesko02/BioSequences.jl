@@ -387,11 +387,36 @@ function approximate_search(jss::JournaledString, needle::LongDNA{4})
     end
 end
 
-#= function approximate_search(jst::JSTree, needle::LongDNA{4})
+function approximate_search(jst::JSTree, needle::LongDNA{4})
     query = ApproximateSearchQuery(needle)
+    indexes = UnitRange{Int}[]
     vector = UnitRange{Int}[]
-    vector = findall(query, seq)
-    for (name, node) in jst.children
+    to_remove = UnitRange{Int64}[]   
+    indexes = findall(query, seq)
+    tolerance = ceil(Int64, (length(needle) / 100) * 5) 
 
-    end
-end =#
+   for range in indexes
+        for (name, node) in jst.children
+            for ( _, entry) in node.deltaMap
+                if entry.position in range
+                    seq = flatten(jst, name)
+                    empty!(vector)
+                    seq = apply_delta(seq, entry)
+                    vector = push!(approximate_findall(query, tolerance, seq))
+                    push!(to_remove, range)
+                    if isempty(vector)
+                        println("No match at Child $name")
+                    else
+                        println("Match at Child $name")
+                        println("Ranges: ", vector)
+                    end
+                end
+            end
+            filter!(x -> x ∉ to_remove, indices)
+            if !isempty(indices)
+                println("Match at Child $name")
+                println("Ranges: ", indices) 
+            end
+        end
+    end    
+end
