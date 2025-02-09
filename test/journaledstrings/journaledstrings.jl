@@ -283,23 +283,17 @@ return hash(jst1.deltaMap)==hash(jst2.deltaMap)
 end
 
 function slow_search(jss::JournaledString, needle::LongDNA )
-
+    results = Dict(i => UnitRange{Int64}[] for i in 1:length(jss.deltaMap))
     query = ExactSearchQuery(needle)
-    vector = UnitRange{Int}[]
+    vector = UnitRange{Int64}[]
     for i in 1:length(jss.deltaMap)
-        empty!(vector)
+
         seq = apply_delta(jss.reference, jss.deltaMap[i])
         vector = BioSequences.findall(query, seq)
-
-        if isempty(vector)
-            println("No match at Deltamap N° $i")
-        else
-            println("Match at Deltamap N° $i")
-            println("Ranges: ", vector)
-        end
+        append!(results[i], vector)
 
     end
-
+    return results
 end
 
 function apply_delta(reference::LongDNA{4}, entry::JournalEntry)
@@ -329,7 +323,7 @@ function slow_search(jst::JSTree, needle::LongDNA{4})
 
         empty!(vector)
         if (!isnothing(child.deltaMap))
-        seq = apply_delta(flatten(jst, name), child.deltaMap)
+        seq = flatten(jst, name)
         vector = BioSequences.findall(query, seq)
         end
         
@@ -347,7 +341,7 @@ function approximate_findall(query, tolerance::Int64, seq::LongDNA{4})
     pos = findfirst(query, tolerance, seq)
     while pos !== nothing
         push!(results, pos)
-        pos = findnext(query, tolerance, seq, last(pos)+1)
+        pos = findnext(query, tolerance, seq, last(pos)+tolerance+1)
     end
     return results
 end
@@ -355,34 +349,47 @@ end
 function approximate_search(jss::JournaledString, needle::LongDNA{4})
     query = ApproximateSearchQuery(needle)
     tolerance = ceil(Int64, (length(needle) / 100) * 5)  
-    indices = UnitRange{Int64}[]
-    vector = UnitRange{Int64}[]
-    indices = approximate_findall(query, tolerance, jss.reference)
-    to_remove = UnitRange{Int64}[]
+    indexMatrix = Dict{Int64, Vector{UnitRange{Int64}}}()
+    vector = approximate_findall(query, tolerance, jss.reference)
+    to_remove = Set{UnitRange{Int64}}()
+    to_add = Set{UnitRange{Int64}}()
 
-    for range in indices
-        for i in length(jss.deltaMap)
+    for i in 1:length(jss.deltaMap)
+        indexMatrix[i] = vector
+    end
+
+    for i in 1:length(jss.deltaMap)
+        empty!(to_add)
+        empty!(to_remove)
+        for range in indexMatrix[i]
             for ( _, entry) in jss.deltaMap[i]
-
+                
                 if entry.position in range
-                    empty!(vector)
                     seq = apply_delta(jss.reference, entry)
-                    vector = push!(approximate_findall(query, tolerance, seq))
-                    push!(to_remove, range)
-                    if isempty(vector)
-                        println("No match at Deltamap N° $i")
-                    else
-                        println("Match at Deltamap N° $i")
-                        println("Ranges: ", vector)
+
+                    for element in approximate_findall(query, tolerance, seq)
+                        push!(to_add, element)
                     end
+                    
+                    push!(to_remove, range)
                 end
-            end 
-            filter!(x -> x ∉ to_remove, indices)
-            if !isempty(indices)
-                println("Match at Deltamap N° $i")
-                println("Ranges: ", indices) 
+
             end
-        
+        end 
+        indexMatrix[i]= filter(x -> all(y -> x != y, to_remove), indexMatrix[i])
+        append!(indexMatrix[i], to_add)
+        indexMatrix[i] = collect(Set(indexMatrix[i]))
+    end
+    return indexMatrix
+end
+
+function print_results(results::Dict{Int64, Vector{UnitRange{Int64}}})
+    for i in 1:length(results)
+        if isempty(results[i])
+            println("No Match in DeltaMap $i")
+        else
+            println("Match in $i:")
+            println("Ranges: ", results[i])
         end
     end
 end
