@@ -21,5 +21,5 @@ pattern = LongDNA{4}("ATCG")
 #prova= approximate_search(js1, pattern)
 #print_results(prova)
 #@benchmark slow_search(js1, pattern)
-@benchmark approximate_search(js1,pattern)
+approximate_search(js1,pattern, 5)
 

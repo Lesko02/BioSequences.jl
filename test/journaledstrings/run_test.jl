@@ -1,4 +1,5 @@
 include("journaledstrings.jl")
+using BenchmarkTools
 # Define a reference sequence
 reference_seq = LongDNA{4}("AGATCGAGCGAGCTAGCGACTCAG")
 
@@ -30,9 +31,12 @@ add_node(tree, "child4", deltaMap[5], "child5")
 ################################
 print_sequences(js1)
 pattern = LongDNA{4}("CCC")
-@time slow_search(js1, pattern)
+# @time exact_search(js1, pattern)
 ################################
 println("\n")
 print_tree(tree)
 print_sequences(tree)
-@time slow_search(tree, pattern)
+results =  exact_search(tree, pattern)
+print_results(results)
+
+
