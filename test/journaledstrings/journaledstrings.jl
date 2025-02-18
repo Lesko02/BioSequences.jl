@@ -385,6 +385,109 @@ function approximate_search(jss::JournaledString, needle::LongDNA{4})
     return indexMatrix
 end
 
+function approximate_search(jst::JSTree, needle::LongDNA{4})
+
+    seq = jst.root
+    query = ApproximateSearchQuery(needle)
+    vector = UnitRange{Int}[]
+    indexMatrix = Dict{String, Vector{UnitRange{Int64}}}(
+        name => UnitRange{Int64}[] for name in keys(jst.children))
+    tolerance = ceil(Int64, (length(needle) / 100) * 5) 
+
+    vector = approximate_findall(query, tolerance, seq)
+    to_remove = Set{UnitRange{Int64}}()
+    to_add = Set{UnitRange{Int64}}()
+    range2 = Set{UnitRange{Int64}}()
+
+    for (name, _) in indexMatrix
+        indexMatrix[name] = vector
+    end
+
+    println(vector)
+
+    for (name, node) in jst.children
+
+        for range in indexMatrix[name]
+
+            empty!(to_add)
+            empty!(to_remove)
+            if !isnothing(node.deltaMap)
+                empty!(range2)
+                seq = flatten(jst, node.parent.name)
+                range2 = push!(range2, range)
+                range2 = union!(range2, approximate_findall(query, tolerance, seq))
+                union!(to_add, range2)
+                for (time, entry) in node.deltaMap
+                    for range3 in range2
+                        if entry.position in range3
+                            
+                            seq = apply_delta(seq, entry)
+                                
+                            for element in approximate_findall(query, tolerance, seq)
+                                push!(to_add, element)
+                            end
+                            push!(to_remove, range3)   
+                        end
+                    end
+                    
+                end
+            append!(indexMatrix[name], to_add)
+            indexMatrix[name]= filter(x -> all(y -> x != y, to_remove), 
+            indexMatrix[name])
+                
+        end
+        indexMatrix[name] = collect(Set(indexMatrix[name]))
+        end
+    end
+    return indexMatrix
+end
+
+function approximate_search(jss::JournaledString, needle::LongDNA{4},
+    tol::Int64)
+
+    if tol <= 0 || tol >= 100
+        error("Tolerance cannot less or 0% or more than 100%")
+    end
+
+    tolerance = ceil(Int64, (length(needle) / 100) * tol) 
+    query = ApproximateSearchQuery(needle)
+    indexMatrix = Dict{Int64, Vector{UnitRange{Int64}}}()
+    vector = approximate_findall(query, tolerance, jss.reference)
+    to_remove = Set{UnitRange{Int64}}()
+    to_add = Set{UnitRange{Int64}}()
+
+    for i in 1:length(jss.deltaMap)
+        indexMatrix[i] = vector
+    end
+
+    for i in 1:length(jss.deltaMap)
+        empty!(to_add)
+        empty!(to_remove)
+        for range in indexMatrix[i]
+            
+            for ( _, entry) in jss.deltaMap[i]
+                    
+                if entry.position in range
+                    seq = apply_delta(jss.reference, entry)
+
+                    for element in approximate_findall(query, tolerance, seq)
+                        push!(to_add, element)
+                    end
+                        
+                    push!(to_remove, range)
+                end
+
+            end
+
+        end 
+        indexMatrix[i]= filter(x -> all(y -> x != y, to_remove), indexMatrix[i])
+        append!(indexMatrix[i], to_add)
+        indexMatrix[i] = collect(Set(indexMatrix[i]))
+    end
+    return indexMatrix
+end
+
+
 function print_results(results::Dict{Int64, Vector{UnitRange{Int64}}})
     for i in 1:length(results)
         if isempty(results[i])
@@ -405,81 +508,4 @@ function print_results(results::Dict{String, Vector{UnitRange{Int64}}})
             println("Ranges: ", results[name])
         end
     end
-end
-
-function approximate_search(jst::JSTree, needle::LongDNA{4})
-    query = ApproximateSearchQuery(needle)
-    indexes = UnitRange{Int}[]
-    vector = UnitRange{Int}[]
-    to_remove = UnitRange{Int64}[]   
-    indexes = findall(query, seq)
-    tolerance = ceil(Int64, (length(needle) / 100) * 5) 
-
-   for range in indexes
-        for (name, node) in jst.children
-            for ( _, entry) in node.deltaMap
-                if entry.position in range
-                    seq = flatten(jst, name)
-                    empty!(vector)
-                    seq = apply_delta(seq, entry)
-                    vector = push!(approximate_findall(query, tolerance, seq))
-                    push!(to_remove, range)
-                    if isempty(vector)
-                        println("No match at Child $name")
-                    else
-                        println("Match at Child $name")
-                        println("Ranges: ", vector)
-                    end
-                end
-            end
-            filter!(x -> x ∉ to_remove, indices)
-            if !isempty(indices)
-                println("Match at Child $name")
-                println("Ranges: ", indices) 
-            end
-        end
-    end   
-end
-
-function approximate_search(jss::JournaledString, needle::LongDNA{4},
-    tol::Int64)
-
-if tol <= 0 || tol >= 100
-    error("Tolerance cannot less or 0% or more than 100%")
-end
-
-tolerance = ceil(Int64, (length(needle) / 100) * tol) 
-query = ApproximateSearchQuery(needle)
-indexMatrix = Dict{Int64, Vector{UnitRange{Int64}}}()
-vector = approximate_findall(query, tolerance, jss.reference)
-to_remove = Set{UnitRange{Int64}}()
-to_add = Set{UnitRange{Int64}}()
-
-for i in 1:length(jss.deltaMap)
-    indexMatrix[i] = vector
-end
-
-for i in 1:length(jss.deltaMap)
-    empty!(to_add)
-    empty!(to_remove)
-    for range in indexMatrix[i]
-        for ( _, entry) in jss.deltaMap[i]
-            
-            if entry.position in range
-                seq = apply_delta(jss.reference, entry)
-
-                for element in approximate_findall(query, tolerance, seq)
-                    push!(to_add, element)
-                end
-                
-                push!(to_remove, range)
-            end
-
-        end
-    end 
-    indexMatrix[i]= filter(x -> all(y -> x != y, to_remove), indexMatrix[i])
-    append!(indexMatrix[i], to_add)
-    indexMatrix[i] = collect(Set(indexMatrix[i]))
-end
-return indexMatrix
 end
