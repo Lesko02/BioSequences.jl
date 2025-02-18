@@ -29,14 +29,15 @@ add_node(tree, "child1", deltaMap[4], "child4")
 add_node(tree, "child4", deltaMap[5], "child5")
 
 ################################
-print_sequences(js1)
+#print_sequences(js1)
 pattern = LongDNA{4}("CCC")
 # @time exact_search(js1, pattern)
 ################################
 println("\n")
 print_tree(tree)
 print_sequences(tree)
-results =  exact_search(tree, pattern)
+results = approximate_search(tree, pattern)
+println("\n")
 print_results(results)
 
 
